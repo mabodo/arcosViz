@@ -1,0 +1,267 @@
+<html>
+<head>
+	<title>Vidas Cortadas</title>
+	<script src="lib/d3.v3.js" charset="utf-8"></script>
+
+</head>
+<body>
+	<svg></svg>
+	<script>
+
+		/*
+				Manipulación de datos y calculo de esperados
+		*/
+
+
+		//convirete la fecha de nacimento a Date()
+		var nac2date = function(string){
+			splited = string.split('-')
+			if (splited.length==3){
+				return new Date(splited[2],splited[1],splited[0])
+			}else if (splited.length==1){
+				return new Date(splited[0])
+			}else{
+				return ''
+			}			
+			return splited[0]
+		}
+
+		//convirete la fecha de muerete a Date()
+		var mue2date = function(string){
+			splited = string.split('/')
+			if (splited.length==3){
+				return new Date(splited[2],splited[1],splited[0])
+			}else if (splited.length==1){
+				return new Date(splited[0])
+			}else{
+				return ''
+			}
+		}
+
+		//encuentra el valor más proximo inferior i superior en un array a un valor dado
+		//Usada para estimar la edad
+		var boundries = function(val,array){
+		
+			cercanoinferior = Infinity
+			cercanoSuperior = -Infinity
+
+			for(i=0;i<array.length;i++){
+				var diff = array[i]-val
+				if (diff>0)
+					cercanoSuperior = Math.abs(diff)<Math.abs(cercanoSuperior-val)?array[i]:cercanoSuperior
+				else if(diff<0)
+					cercanoinferior = Math.abs(diff)<Math.abs(cercanoinferior-val)?array[i]:cercanoinferior
+				else if (diff==0)
+					return [array[i],array[i]]
+			}			
+			return [cercanoinferior,cercanoSuperior]			
+		}
+
+		//define la funcion que podrá calcular las años esperados de vida
+		var getExpetedDeath;
+		d3.json('data/hom-muj.json',function(data){
+			//console.log(data)
+			var robados = data;
+			getExpetedDeath = function(fecha_nacimiento,fecha_muerte,sexo){
+				//si on se sabe el sexo se assume que es varón
+				if(sexo==undefined){
+					sexo='hombre'
+				}
+				//encontrar las edades de muerte con datos inferior i superior
+				var keys_edades = d3.keys(robados[sexo])
+				var edad = (fecha_muerte-fecha_nacimiento)/(1000*60*60*24*365.242)
+				ref_edades = boundries(edad,keys_edades);
+
+				//encontrar las fechas de muerte con datos inferior i superior
+				var ano =  1970 + fecha_muerte/(1000*60*60*24*365.242)
+				keys_anos = d3.keys(robados[sexo][ref_edades[0]])
+				ref_anos = boundries(ano,keys_anos);
+
+				//encontrar los cuatro puntos mas proximos
+				A = robados[sexo][ref_edades[0]][ref_anos[0]]
+				B = robados[sexo][ref_edades[0]][ref_anos[1]]
+				C = robados[sexo][ref_edades[1]][ref_anos[0]]
+				D = robados[sexo][ref_edades[1]][ref_anos[1]]
+				//encontrar las distancias relativas en ambas dimensiones
+				if (ref_edades[0]!=ref_edades[1])
+					p = (edad-ref_edades[0]) / (ref_edades[1]-ref_edades[0])
+				else
+					p=0
+
+				if (ref_anos[0]!=ref_anos[1])
+					q = (ano-ref_anos[0]) / (ref_anos[1]-ref_anos[0])
+				else
+					q=0
+				//Calculo de la interpolación lineal
+				AnosEsperados = A*p*q + B*(p)*(1-q) + C*(1-p)*(q) + D*(1-p)*(1-q)
+
+				//Creacion del dato de salido
+				fecha_muerte_esperada = fecha_muerte.valueOf()
+				fecha_muerte_esperada+=(AnosEsperados)*(1000*60*60*365.242*24)
+				fecha_muerte_esperada = new Date(fecha_muerte_esperada)
+				return fecha_muerte_esperada
+			}
+		})	
+
+
+		d3.csv('data/listado_1936.csv',function(datacsv){
+
+			//transforma el string a fecha
+			datacsv.forEach(function(d){
+					d.fecha_nacimientoDate = nac2date(d.fecha_nacimiento)
+					d.fecha_muerteDate = mue2date(d.fecha_muerte_ok)
+				})
+			
+			//filtra los datos incoherentes
+			datafilter = datacsv.filter(function(d,i){
+							var nac = d.fecha_nacimientoDate
+							var mue = d.fecha_muerteDate
+
+							if (nac=='' || nac=='Invalid Date')
+								return false
+							if (mue=='' || mue=='Invalid Date')
+								return false
+							var edad = (mue-nac)/(1000*60*60*24*365)
+							if (edad<0 || edad>110)
+								return false
+							return true
+						})
+
+			//añade la muerte esperada
+			datafilter.forEach(function(d){
+								if(  getExpetedDeath(d.fecha_nacimientoDate, d.fecha_muerteDate) == 'Invalid Date'){
+									console.log(d.fecha_nacimientoDate)
+									console.log(d.fecha_muerteDate)
+									asdfasdfasd
+								}
+								d.fecha_muerte_esperadaDate= getExpetedDeath(d.fecha_nacimientoDate, d.fecha_muerteDate);
+							})
+
+
+
+			/*
+					Visualización 
+			*/
+			
+
+
+			
+			var pointparab=function(x){
+				//dada una parabola postiva que va de {0,0} a {1,0} pasando por {0.5,1} devuevle el punto y dada la x.
+				return Math.pow(x-0.5,2)*4
+			}
+
+			var croparab=function(begin,end,stop,height){
+				//la funcion genera los puntos x e y de una parabola de begin a end passando por height i parandose en stop.
+				arr=[]
+				npoints = 15
+				for(var i=0;i<npoints;i++){
+					var zero2one = i/(npoints-1)
+					var x=begin + zero2one*(end-begin)
+					var y=pointparab(zero2one)*height-height
+					if (x>stop) break;
+					arr.push({'x':x,'y':y})
+				}
+				stopprop = (stop-begin)/(end-begin)
+				arr.push({'x':stop,'y':pointparab(stopprop)*height-height})
+				return arr
+			}
+
+			var croparab2=function(begin,end,stop,height){
+				//la funcion genera los puntos x e y de parabola de begin a end passando por heigght i desde stop.
+				arr=[]
+				npoints = 15
+				stopprop = (stop-begin)/(end-begin)
+				arr.push({'x':stop,'y':pointparab(stopprop)*height-height})
+				for(var i=0;i<npoints;i++){
+					var zero2one = i/(npoints-1)
+					var x=begin + zero2one*(end-begin)
+					var y=pointparab(zero2one)*height-height
+					if (x>stop) 
+						arr.push({'x':x,'y':y})
+				}
+
+				return arr
+			}
+
+			//dibuja una linea dados unos puntos x e y
+			var line = d3.svg.line()
+						     .x(function(d) { return d.x; })
+						     .y(function(d) { return d.y; })
+						     .interpolate("monotone");
+
+			var ini = new Date('1850').valueOf()
+			var fin = new Date('2013').valueOf()
+			date2pix=d3.scale.linear().domain([ini,fin]).range([0,2000])
+			console.log(date2pix)
+
+			svg = d3.select('svg')
+					.attr('width',2000)
+					.attr('height',800)
+			var height = 400
+
+			arcsGroup  = svg.append('g') //grupo de donde cuelgan los arcos vivos
+							.attr('transform','translate(0,600)')
+			
+
+			for (var j=0;j<10;j++){
+				arcsGroup.selectAll('.vivos')
+						  .data(datafilter)
+						  .enter()
+						  	.append('path')
+						  	.attr('d',function(d,i){
+						  		//PENSAR BE COM FER AIXO
+						  		var nac=date2pix( d.fecha_nacimientoDate.valueOf() )
+						  		var mue=date2pix( d.fecha_muerteDate.valueOf() )
+						  		var esp=date2pix( d.fecha_muerte_esperadaDate.valueOf() )
+						  		var arr=croparab(nac,esp,mue,height+(i%100))
+						  		return line(arr)
+						  	})
+						  	.attr('stroke','#FF0000')
+						  	.attr('fill-opacity','0')
+						  	.attr('class','vivos')
+						  	.attr('stroke-opacity',0.2)
+						  	.attr('stroke-width',1.5)
+						  	.on('mouseover',function(d){
+					  			d3.select('#nombre').text(d.nombre)
+					  			d3.select(this).attr('stroke-opacity',1)
+					  		}).on('mouseout',function(d){
+					  			d3.select('#nombre').text('')
+					  			d3.select(this).attr('stroke-opacity',0.2)
+					  		});
+					  }
+
+					  	
+
+			arcsGroup2  = svg.append('g')
+							.attr('transform','translate(0,600)')
+
+			arcsGroup2.selectAll('.robados')
+					  .data(datafilter)
+					  .enter()
+					  	.append('path')
+					  	.attr('d',function(d,i){
+					  		var nac=date2pix( d.fecha_nacimientoDate.valueOf() )
+					  		var mue=date2pix( d.fecha_muerteDate.valueOf() )
+					  		var esp=date2pix( d.fecha_muerte_esperadaDate.valueOf() )
+					  		var arr=croparab2(nac,esp,mue,height+(i%100))
+					  		return line(arr)
+					  	})
+					  	.attr('stroke','#888')
+					  	.attr('fill-opacity','0')
+					  	.attr('class','robados')
+					  	.attr('stroke-opacity',0.2)
+					  	.attr('stroke-width',1.5)
+
+			svg.append('text')
+				.text('')
+				.attr('x',10)
+				.attr('y',20)
+				.attr('id','nombre')
+
+
+			
+		})
+	</script
+</body>
+</html>
