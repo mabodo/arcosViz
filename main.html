@@ -198,7 +198,7 @@
 			svg = d3.select('svg')
 					.attr('width',2000)
 					.attr('height',800)
-			var height = 400
+			var height = 100
 
 			arcsGroup  = svg.append('g') //grupo de donde cuelgan los arcos vivos
 							.attr('transform','translate(0,600)')
@@ -214,20 +214,22 @@
 						  		var nac=date2pix( d.fecha_nacimientoDate.valueOf() )
 						  		var mue=date2pix( d.fecha_muerteDate.valueOf() )
 						  		var esp=date2pix( d.fecha_muerte_esperadaDate.valueOf() )
-						  		var arr=croparab(nac,esp,mue,height+(i%100))
+						  		var arr=croparab(nac,esp,mue,height+(i%100)*4)
 						  		return line(arr)
 						  	})
-						  	.attr('stroke','#FF0000')
-						  	.attr('fill-opacity','0')
+						  	.style('stroke','#FF0000')
+						  	.style('fill','none')
 						  	.attr('class','vivos')
-						  	.attr('stroke-opacity',0.2)
-						  	.attr('stroke-width',1.5)
+						  	.style('stroke-opacity',0.2)
+						  	.style('stroke-width',1.5)
 						  	.on('mouseover',function(d){
 					  			d3.select('#nombre').text(d.nombre)
-					  			d3.select(this).attr('stroke-opacity',1)
+					  			d3.select(this).style('stroke-opacity',1)
+					  			d3.select(this).style('stroke','#EEEE00')
 					  		}).on('mouseout',function(d){
 					  			d3.select('#nombre').text('')
-					  			d3.select(this).attr('stroke-opacity',0.2)
+					  			d3.select(this).style('stroke-opacity',0.2)
+					  			d3.select(this).style('stroke','#FF0000')
 					  		});
 					  }
 
@@ -244,14 +246,14 @@
 					  		var nac=date2pix( d.fecha_nacimientoDate.valueOf() )
 					  		var mue=date2pix( d.fecha_muerteDate.valueOf() )
 					  		var esp=date2pix( d.fecha_muerte_esperadaDate.valueOf() )
-					  		var arr=croparab2(nac,esp,mue,height+(i%100))
+					  		var arr=croparab2(nac,esp,mue,height+(i%100)*4)
 					  		return line(arr)
 					  	})
-					  	.attr('stroke','#888')
-					  	.attr('fill-opacity','0')
+					  	.style('stroke','#888')
+					  	.style('fill','none')
 					  	.attr('class','robados')
-					  	.attr('stroke-opacity',0.2)
-					  	.attr('stroke-width',1.5)
+					  	.style('stroke-opacity',0.2)
+					  	.style('stroke-width',1.5)
 
 			svg.append('text')
 				.text('')
